@@ -1,3 +1,5 @@
+name: Run
+
 on:
   schedule:
     - cron: "0 15 * * 2"

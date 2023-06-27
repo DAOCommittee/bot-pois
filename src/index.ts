@@ -48,7 +48,7 @@ async function poiTransactionData(action: 'add_poi' | 'remove_poi', coordinates:
 }
 
 async function getPendingPOIs(): Promise<pendingPOIs[]> {
-  const res = await fetch('https://governance.decentraland.org/api/proposals?limit=25&offset=0&status=active&type=poi')
+  const res = await fetch('https://governance.decentraland.org/api/proposals?limit=25&offset=0&status=passed&type=poi')
   const json = (await res.json()) as GovernanceResponse
   return json.data.slice(0, 1).map((a) => {
     return { action: a.configuration.type, coordinates: `${a.configuration.x},${a.configuration.y}` }
