@@ -28,11 +28,15 @@ async function main() {
   )
   console.log(safeTransactionData)
 
-  const nonce = (await safe.getNonce()) + 2
+  const nonce = await safeService.getNextNonce(process.env.SAFE_ADDRESS!)
+  if (Number.isNaN(+nonce)) {
+    console.log(nonce)
+    return
+  }
 
   const safeTransaction = await safe.createTransaction({
     transactions: safeTransactionData,
-    options: { nonce },
+    options: { nonce: +nonce },
     onlyCalls: true
   })
   const safeTxHash = await safe.getTransactionHash(safeTransaction)
