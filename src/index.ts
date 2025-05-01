@@ -1,6 +1,6 @@
 import { fetch } from 'undici'
 import * as ethers from 'ethers'
-import Safe, { EthersAdapter } from '@safe-global/protocol-kit'
+import Safe from '@safe-global/protocol-kit'
 import SafeApiKit from '@safe-global/api-kit'
 import { MetaTransactionData } from '@safe-global/safe-core-sdk-types'
 import 'dotenv/config'
@@ -9,22 +9,34 @@ import abi from './abi'
 const contract = new ethers.Contract('0xFEC09d5C192aaf7Ec7E2C89Cc8D3224138391B2E', abi)
 
 async function main() {
-  const provider = new ethers.providers.JsonRpcProvider(process.env.RPC!)
+  const provider = new ethers.JsonRpcProvider(process.env.RPC!)
   const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider)
-  const ethAdapterSigner = new EthersAdapter({ ethers, signerOrProvider: signer })
-  const txServiceUrl = 'https://safe-transaction-polygon.safe.global/'
-  const safeService = new SafeApiKit({ txServiceUrl, ethAdapter: ethAdapterSigner })
-  const safe = await Safe.create({ ethAdapter: ethAdapterSigner, safeAddress: process.env.SAFE_ADDRESS! })
+  const safeService = new SafeApiKit({ chainId: BigInt(137) })
+
+  const safe = await Safe.init({
+    provider: process.env.RPC!,
+    signer: process.env.PRIVATE_KEY!,
+    safeAddress: process.env.SAFE_ADDRESS!
+  })
+  console.log('Get POIs')
 
   const pendingPOIs = await getPendingPOIs()
+  console.log(pendingPOIs)
+
   const safeTransactionData: MetaTransactionData[] = await Promise.all(
     pendingPOIs.map(async (a) => await poiTransactionData(a.action, a.coordinates))
   )
   console.log(safeTransactionData)
 
-  const safeTransaction = await safe.createTransaction({ safeTransactionData })
+  const nonce = (await safe.getNonce()) + 2
+
+  const safeTransaction = await safe.createTransaction({
+    transactions: safeTransactionData,
+    options: { nonce },
+    onlyCalls: true
+  })
   const safeTxHash = await safe.getTransactionHash(safeTransaction)
-  const senderSignature = await safe.signTransactionHash(safeTxHash)
+  const senderSignature = await safe.signHash(safeTxHash)
   await safeService.proposeTransaction({
     safeAddress: process.env.SAFE_ADDRESS!,
     safeTransactionData: safeTransaction.data,
@@ -40,8 +52,8 @@ async function poiTransactionData(action: 'add_poi' | 'remove_poi', coordinates:
   console.log(action, coordinates)
 
   let tx = { data: '', to: '' }
-  if (action === 'add_poi') tx = await (contract as any).populateTransaction['add'](coordinates)
-  if (action === 'remove_poi') tx = await (contract as any).populateTransaction['remove'](coordinates)
+  if (action === 'add_poi') tx = await (contract as any)['add'].populateTransaction(coordinates)
+  if (action === 'remove_poi') tx = await (contract as any)['remove'].populateTransaction(coordinates)
 
   const data: MetaTransactionData = { data: tx.data, to: tx.to, value: '0' }
   return data
