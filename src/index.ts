@@ -36,7 +36,7 @@ async function main() {
 
   const safeTransaction = await safe.createTransaction({
     transactions: safeTransactionData,
-    options: { nonce: +nonce },
+    options: { nonce: +nonce-1 },
     onlyCalls: true
   })
   const safeTxHash = await safe.getTransactionHash(safeTransaction)
